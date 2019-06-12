@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/gocolly/colly"
-	_ "github.com/gocolly/colly"
 	"log"
 	"net/http"
 	"os"
@@ -18,7 +16,8 @@ import (
 const skipMultiWordDefinitions = true
 
 func main() {
-	skipSections := map[string]bool{
+	parser := WktParser{}
+	parser.SkipSections = map[string]bool{
 		"Derived terms":    true,
 		"Compounds":        true,
 		"References":       true,
@@ -35,139 +34,58 @@ func main() {
 		"Conjugation":      true,
 	}
 
-	skipPrefixes := map[string]bool{
+	parser.SkipPrefixes = map[string]bool{
 		"Hyphenation: ": true,
 		"Rhymes: ":      true,
 		"(index ":       true,
 	}
+	parser.SrcLang = "Finnish"
+	parser.SrcLangHeading = "#" + parser.SrcLang
 	var words []Word
-	srcLang := "Finnish"
-	// Instantiate default collector
-	c := colly.NewCollector(
-		// Visit only domains: coursera.org, www.coursera.org
-		colly.AllowedDomains("en.wiktionary.org"),
-
-		// Cache responses to prevent multiple download of pages
-		// even if the collector is restarted
-		colly.CacheDir("./.kindling_cache"),
-		//colly.Async(true),
-		colly.Async(false),
-	)
-
-	c.SetProxy("socks5://localhost:1337")
-	// On every a element which has .top-matter attribute call callback
-	// This class is unique to the div that holds all information about a story
-	srcLangHeading := "#" + srcLang
-	c.OnHTML("div.mw-parser-output", func(e *colly.HTMLElement) {
-		word := Word{}
-		sel := e.DOM.Find(srcLangHeading). // find span with our lang
-							Parent(). // get the h2 that it's in
-							NextUntil("hr, h2")
-
-		headword := sel.Find(".headword").First().Text()
-		//fmt.Println("Word:", headword)
-		word.Headword = headword
-		sel.Find("h3").Each(func(i int, selection *goquery.Selection) {
-			selection.ReplaceWithHtml(fmt.Sprintf("<b>%s</b>", selection.Text()))
-		})
-		infl := make(map[string]struct{})
-		sel.Find("td > span").Each(func(i int, selection *goquery.Selection) {
-			//fmt.Println("infl:", selection.Text())
-			spl := strings.Split(selection.Text(), " ")
-			last := spl[len(spl)-1]
-			infl[last] = struct{}{}
-		})
-		delete(infl, headword)
-		for inf := range infl {
-			word.Inflections = append(word.Inflections, inf)
-		}
-		sel.Find("a, span").Each(func(i int, selection *goquery.Selection) {
-			selection.ReplaceWithHtml(selection.Text())
-		})
-		sel.Find("style").Remove()
-		sel.Find("li").Each(func(i int, selection *goquery.Selection) {
-			if selection.Nodes[0].Data == "table" || selection.Nodes[0].Data == "style" || selection.Nodes[0].Data == "div" {
-				selection.Remove()
-			}
-			text := selection.Text()
-			for prefix := range skipPrefixes {
-				if strings.HasPrefix(text, prefix) {
-					selection.Remove()
-					return
-				}
-			}
-		})
-		//sel.Find("li").Each(func(i int, selection *goquery.Selection) {
-		//	selection.ReplaceWithHtml(fmt.Sprintf("<p>%s</p>", selection.Text()))
-		//})
-		var fullHtml strings.Builder
-
-		skipNext := false
-		sel.Each(func(i int, selection *goquery.Selection) {
-			if skipNext {
-				skipNext = false
-				return
-			}
-			if selection.Nodes[0].Data == "table" || selection.Nodes[0].Data == "style" || selection.Nodes[0].Data == "div" {
-				return
-			}
-			text := selection.Text()
-			for prefix := range skipPrefixes {
-				if strings.HasPrefix(text, prefix) {
-					return
-				}
-			}
-			if strings.HasPrefix(selection.Nodes[0].Data, "h") {
-				selection.Nodes[0].Data = "h4"
-				if skipSections[text] {
-					skipNext = true
-					return
-				}
-			}
-			html, err := goquery.OuterHtml(selection)
-			if err != nil {
-				log.Println("Failed to get html for word", headword)
-				return
-			}
-			if html != "" {
-				fullHtml.WriteString(html)
-
-			}
-
-		})
-		word.Html = fullHtml.String()
-		words = append(words, word)
-	})
-
-	// Set max Parallelism and introduce a Random Delay
-	_ = c.Limit(&colly.LimitRule{
-		Parallelism: 1,
-		//Delay:500 * time.Millisecond,
-		//RandomDelay: 1000 * time.Millisecond,
-	})
-
-	c.OnError(func(response *colly.Response, e error) {
-		//log.Println("Error getting", response.Request.URL.String())
-		//log.Println(e)
-		c.Visit(response.Request.URL.String())
-	})
-	// Before making a request print "Visiting ..."
-	c.OnResponse(func(response *colly.Response) {
-		log.Println("Parsing", response.Request.URL)
-	})
-	c.Visit("https://en.wiktionary.org/wiki/mutta?printable=yes")
-	titles := make(chan string, 2)
-	go findPagesInCategory(fmt.Sprintf("%s_lemmas", srcLang), titles)
+	titles := make(chan string, 1000)
+	titles <- "mutta"
+	titles <- "olla"
+	go findPagesInCategory(fmt.Sprintf("%s_lemmas", parser.SrcLang), titles)
 	i := 1
 	for title := range titles {
-		c.Visit(fmt.Sprintf("https://en.wiktionary.org/wiki/%s?printable=yes", title))
-		//if i >= 1500 {
-		//	break
-		//}
+		currentUrl := fmt.Sprintf("https://en.wiktionary.org/w/api.php?action=parse&formatversion=2&format=json&page=%s&prop=text", title)
+		for {
+			response, err := http.Get(currentUrl)
+			fmt.Println(i, "Getting", currentUrl)
+			if err != nil {
+				log.Println("Retrying", currentUrl)
+				log.Println(err)
+				time.Sleep(2 * time.Second)
+				continue
+			}
+
+			data := ParseResponse{}
+			err = json.NewDecoder(response.Body).Decode(&data)
+			if err != nil {
+				log.Println("Error decoding", currentUrl)
+				log.Println(err)
+				time.Sleep(2 * time.Second)
+				continue
+			}
+
+			word, err := parser.parseHtml(data.Parse.Text)
+			if err != nil {
+				log.Println("Error parsing", currentUrl)
+				log.Println(err)
+				time.Sleep(2 * time.Second)
+				continue
+			}
+			words = append(words, word)
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+		if i >= 10 {
+			break
+		}
+
 		i++
 	}
 
-	c.Wait()
 	println("Titles found:", i)
 	println("Docs parsed:", len(words))
 	fmt.Println("Writing template...")
@@ -180,6 +98,13 @@ func main() {
 	}
 }
 
+type ParseResponse struct {
+	Parse struct {
+		Title  string `json:"title"`
+		Pageid int    `json:"pageid"`
+		Text   string `json:"text"`
+	} `json:"parse"`
+}
 type CmResponse struct {
 	Continue struct {
 		Cmcontinue string `json:"cmcontinue"`
@@ -189,6 +114,101 @@ type CmResponse struct {
 			Title string `json:"title"`
 		} `json:"categorymembers"`
 	} `json:"query"`
+}
+
+type WktParser struct {
+	SrcLang        string
+	SrcLangHeading string
+	SkipSections   map[string]bool
+
+	SkipPrefixes map[string]bool
+}
+
+func (p *WktParser) parseHtml(html string) (Word, error) {
+	word := Word{}
+	e, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return word, err
+	}
+	sel := e.Find(p.SrcLangHeading). // find span with our lang
+						Parent(). // get the h2 that it's in
+						NextUntil("hr, h2")
+
+	sel.Find("style, .mw-editsection").Remove()
+	sel.Find(".audiotable").Parent().Remove()
+
+	headword := sel.Find(".headword").First().Text()
+	//fmt.Println("Word:", headword)
+	word.Headword = headword
+	sel.Find("h3").Each(func(i int, selection *goquery.Selection) {
+		selection.ReplaceWithHtml(fmt.Sprintf("<b>%s</b>", selection.Text()))
+	})
+	infl := make(map[string]struct{})
+	sel.Find("td > span").Each(func(i int, selection *goquery.Selection) {
+		//fmt.Println("infl:", selection.Text())
+		spl := strings.Split(selection.Text(), " ")
+		last := spl[len(spl)-1]
+		infl[last] = struct{}{}
+	})
+	delete(infl, headword)
+	for inf := range infl {
+		word.Inflections = append(word.Inflections, inf)
+	}
+	sel.Find("a, span").Each(func(i int, selection *goquery.Selection) {
+		selection.ReplaceWithHtml(selection.Text())
+	})
+	sel.Find("li").Each(func(i int, selection *goquery.Selection) {
+		if selection.Nodes[0].Data == "table" || selection.Nodes[0].Data == "style" || selection.Nodes[0].Data == "div" {
+			selection.Remove()
+		}
+		text := selection.Text()
+		for prefix := range p.SkipPrefixes {
+			if strings.HasPrefix(text, prefix) {
+				selection.Remove()
+				return
+			}
+		}
+	})
+	//sel.Find("li").Each(func(i int, selection *goquery.Selection) {
+	//	selection.ReplaceWithHtml(fmt.Sprintf("<p>%s</p>", selection.Text()))
+	//})
+	var fullHtml strings.Builder
+
+	skipNext := false
+	sel.Each(func(i int, selection *goquery.Selection) {
+		if skipNext {
+			skipNext = false
+			return
+		}
+		if selection.Nodes[0].Data == "table" || selection.Nodes[0].Data == "style" || selection.Nodes[0].Data == "div" {
+			return
+		}
+		text := selection.Text()
+		for prefix := range p.SkipPrefixes {
+			if strings.HasPrefix(text, prefix) {
+				return
+			}
+		}
+		if strings.HasPrefix(selection.Nodes[0].Data, "h") {
+			selection.Nodes[0].Data = "h3"
+			if p.SkipSections[text] {
+				skipNext = true
+				return
+			}
+		}
+		html, err := goquery.OuterHtml(selection)
+		if err != nil {
+			log.Println("Failed to get html for word", headword)
+			return
+		}
+		if html != "" {
+			fullHtml.WriteString(html)
+
+		}
+
+	})
+	word.Html = fullHtml.String()
+	return word, nil
 }
 
 func findPagesInCategory(category string, titles chan<- string) {
@@ -216,13 +236,16 @@ func findPagesInCategory(category string, titles chan<- string) {
 			continue
 		}
 		for _, cm := range data.Query.Categorymembers {
-			if skipMultiWordDefinitions && strings.Contains(cm.Title, "_") {
+			if skipMultiWordDefinitions && strings.Contains(cm.Title, " ") {
+				continue
+			}
+			if strings.HasPrefix(cm.Title, "Category:") {
 				continue
 			}
 			titles <- cm.Title
 		}
 		cont = data.Continue.Cmcontinue
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(2 * time.Second)
 	}
 	close(titles)
 }
