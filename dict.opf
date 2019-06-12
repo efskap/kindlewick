@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package unique-identifier="uid">
+    <metadata>
+        <dc-metadata xmlns:dc="http://purl.org/metadata/dublin_core" xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0/">
+            <dc:Title>en-fi wiktionary</dc:Title>
+            <dc:Language>en-us</dc:Language>
+            <dc:Creator>efskap</dc:Creator>
+            <dc:Description>made with github.com/efskap/kindling</dc:Description>
+            <dc:Date>8/6/2019</dc:Date>
+        </dc-metadata>
+        <x-metadata>
+            <output encoding="utf-8" content-type="text/x-oeb1-document"/>
+            <EmbeddedCover>cover.png</EmbeddedCover>
+            <!-- That's how it's recognized as a dictionary: -->
+            <DictionaryInLanguage>fi</DictionaryInLanguage>
+            <DictionaryOutLanguage>en</DictionaryOutLanguage>
+        </x-metadata>
+    </metadata>
+    <manifest>
+        <item id="item1" media-type="text/x-oeb1-document" href="dict.html"/>
+    </manifest>
+    <spine toc="toc">
+    </spine>
+</package>

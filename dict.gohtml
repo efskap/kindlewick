@@ -1,0 +1,24 @@
+<html xmlns:math="http://exslt.org/math" xmlns:svg="http://www.w3.org/2000/svg" xmlns:tl="https://kindlegen.s3.amazonaws.com/AmazonKindlePublishingGuidelines.pdf" xmlns:saxon="http://saxon.sf.net/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:cx="https://kindlegen.s3.amazonaws.com/AmazonKindlePublishingGuidelines.pdf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:mbp="https://kindlegen.s3.amazonaws.com/AmazonKindlePublishingGuidelines.pdf"xmlns:mmc="https://kindlegen.s3.amazonaws.com/AmazonKindlePublishingGuidelines.pdf" xmlns:idx="https://kindlegen.s3.amazonaws.com/AmazonKindlePublishingGuidelines.pdf" lang="en">
+{{- /*gotype: kindling.DictData*/ -}}
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head>
+<body>
+<mbp:frameset>
+    {{- $srcLang := .SrcLang -}}
+    {{- range $i, $word := .Words -}}
+    <idx:entry name="{{$srcLang}}" scriptable="yes" spell="yes">
+            <idx:orth value="{{$word.Headword}}">
+                {{- if $word.Inflections -}}
+                <idx:infl>
+                    {{- range $word.Inflections -}}
+                    <idx:iform value="{{.}}" exact="yes"/>
+                    {{- end -}}
+                </idx:infl>
+                {{- end -}}
+            </idx:orth>
+            {{- $word.Html -}}
+    </idx:entry>
+    <hr/>
+    {{- end -}}
+</mbp:frameset>
+</body>
+</html>
