@@ -1,7 +1,7 @@
 = Wiktionary to Kindle
 
 ++++
-<img src="screenshot.png" alt="Screenshot" align="right" style="width:55%; margin:0 1em; border-radius:1em; border: 0 solid #111; border-width: 3.3em 2.2em 5em; box-shadow: 1px 1px 3px #333;" >
+<img src="screenshot.png" alt="Screenshot" align="right" width="55%" >
 ++++
 
 This is a Go program to fetch Wiktionary page content from their API, (optionally) intersect it with a frequency wordlist (as the database is probably too big otherwise), and then produce an HTML file that, together with an .opf file, can be converted to mobi and used on your Kindle for in-book lookups.
