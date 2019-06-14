@@ -1,0 +1,20 @@
+= Wiktionary to Kindle
+
+++++
+<img src="screenshot.png" alt="Screenshot" align="right" style="width:55%; margin:0 1em; border-radius:1em; border: 0 solid #111; border-width: 3.3em 2.2em 5em; box-shadow: 1px 1px 3px #333;" >
+++++
+
+This is a Go program to fetch Wiktionary page content from their API, (optionally) intersect it with a frequency wordlist (as the database is probably too big otherwise), and then produce an HTML file that, together with an .opf file, can be converted to mobi and used on your Kindle for in-book lookups.
+
+== Instructions
+
+
+1. Install Go. Probably 1.12.
+
+2. Download a frequency wordlist for your language https://invokeit.wordpress.com/frequency-word-lists/[from here] if possible. Otherwise the file might be too big for `kindlegen` to handle.
+
+3. Download `kindlegen` for your platform https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765211[from here].
+
+4. ???
+
+5. `go run kindling.go -file words.gob -freqlist <(head -n 50000 fi.txt) && kindlegen dict.opf -verbose -c2 -o enfi.mobi`
