@@ -1,7 +1,7 @@
 = Wiktionary to Kindle
 
 ++++
-<img src="screenshot.png" alt="Screenshot" align="right" width="55%" >
+<img src="screenshot.png" alt="Screenshot" align="right" width="40%" >
 ++++
 
 This is a Go program to fetch Wiktionary page content from their API, (optionally) intersect it with a frequency wordlist (as the database is probably too big otherwise), and then produce an HTML file that, together with an .opf file, can be converted to mobi and used on your Kindle for in-book lookups.
@@ -18,3 +18,15 @@ This is a Go program to fetch Wiktionary page content from their API, (optionall
 4. ???
 
 5. `go run kindling.go -file words.gob -freqlist <(head -n 50000 fi.txt) && kindlegen dict.opf -verbose -c2 -o enfi.mobi`
+
+== Q&A
+
+--
+
+How are inflections acquired?::
+Basically it just takes every span inside a table cell, and if it consists of multiple words, takes the last one (`olen odottanut` -> `odottanut`, since you can only look up a single word at a time on Kindle), and filters out duplicates.
+
+Why not consult the frequency list _before_ downloading every single page?::
+Because frequency lists usually have inflected forms of words, and if you only see `olen` in the list you won't know you have to download the lemma form `olla`. Ergo, download everything and check the headword and all inflections against the list.
+
+--
