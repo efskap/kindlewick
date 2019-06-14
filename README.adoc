@@ -6,6 +6,8 @@
 
 This is a Go program to fetch Wiktionary page content from their API, (optionally) intersect it with a frequency wordlist (as the database is probably too big otherwise), and then produce an HTML file that, together with an .opf file, can be converted to mobi and used on your Kindle for in-book lookups.
 
+NOTE: My TL is Finnish, so that's what I wrote this program in mind with. Hopefully it'll work out of the box for your TL too, but there's always the possibility that it does something wonky in the inflection table. Fear not though, goquery is easy to work with!
+
 == Instructions
 
 
