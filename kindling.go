@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"encoding/gob"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"log"
@@ -16,6 +19,84 @@ import (
 const skipMultiWordDefinitions = true
 
 func main() {
+
+	filenamePtr := flag.String("file", "", "gob file to load words from instead of wiktionary")
+	freqlistPtr := flag.String("freqlist", "fi.txt", "frequency list to filter by")
+	flag.Parse()
+	var words []Word
+	if *filenamePtr == "" {
+		words = downloadWords("Finnish")
+		fmt.Println("Saving words to words.gob")
+		err := writeGob("words.gob", words)
+		if err != nil {
+			log.Println("Error saving file", err)
+		}
+	} else {
+		err := readGob(*filenamePtr, &words)
+		if err != nil {
+			log.Fatalln("Error loading file", err)
+		}
+	}
+
+	if *freqlistPtr != "" {
+		file, err := os.Open(*freqlistPtr)
+		if err != nil {
+			log.Println("Error loading file", err)
+		} else {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			freqWords := make(map[string]bool)
+			for scanner.Scan() {
+				split := strings.TrimSpace(strings.Split(scanner.Text(), " ")[0])
+				freqWords[split] = true
+			}
+			fmt.Println(len(freqWords), "words in frequency list")
+
+			var newWords []Word
+			for _, word := range words {
+				if freqWords[word.Headword] {
+					newWords = append(newWords, word)
+				} else {
+					for _, infl := range word.Inflections {
+						if freqWords[infl] {
+							newWords = append(newWords, word)
+							break
+						}
+					}
+				}
+			}
+
+			fmt.Println("Freq filtering:", len(words), "->", len(newWords))
+			words = newWords
+		}
+	}
+
+	fmt.Println("Writing template...")
+	tmpl := template.Must(template.ParseFiles("dict.gohtml"))
+
+	f, err := os.Create("dict.html")
+	err = tmpl.Execute(f, DictData{Words: words, SrcLang: "Finnish", SrcLangCode: "fi"})
+	if err != nil {
+		log.Print("execute: ", err)
+	}
+
+	batchNum := 1
+	batchSize := 10000
+	if false && len(words) > batchSize {
+		fmt.Println("Now trying in batches...")
+		for i := 0; i < len(words); i += batchSize {
+			batch := words[i:min(i+batchSize, len(words))]
+			f, err := os.Create(fmt.Sprintf("dict_part_%d.html", batchNum))
+			err = tmpl.Execute(f, DictData{Words: batch, SrcLang: "Finnish", SrcLangCode: "fi"})
+			if err != nil {
+				log.Print("error executing tmpl: ", err)
+			}
+			batchNum++
+		}
+	}
+}
+func downloadWords(srcLang string) (words []Word) {
+
 	parser := WktParser{}
 	parser.SkipSections = map[string]bool{
 		"Derived terms":    true,
@@ -39,9 +120,8 @@ func main() {
 		"Rhymes: ":      true,
 		"(index ":       true,
 	}
-	parser.SrcLang = "Finnish"
+	parser.SrcLang = srcLang
 	parser.SrcLangHeading = "#" + parser.SrcLang
-	var words []Word
 	titles := make(chan string, 1000)
 	titles <- "mutta"
 	titles <- "olla"
@@ -79,23 +159,41 @@ func main() {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
-		if i >= 10 {
-			break
-		}
+		//if i >= 10 {
+		//	break
+		//}
 
 		i++
 	}
 
 	println("Titles found:", i)
 	println("Docs parsed:", len(words))
-	fmt.Println("Writing template...")
-	tmpl := template.Must(template.ParseFiles("dict.gohtml"))
-	f, err := os.Create("dict.html")
-	err = tmpl.Execute(f, DictData{Words: words, SrcLang: "Finnish", SrcLangCode: "fi"})
-	if err != nil {
-		log.Print("execute: ", err)
-		return
+	return words
+}
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
+	return b
+}
+func writeGob(filePath string, object interface{}) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(object)
+	return err
+}
+func readGob(filePath string, object interface{}) error {
+	file, err := os.Open(filePath)
+	if err == nil {
+		decoder := gob.NewDecoder(file)
+		err = decoder.Decode(object)
+	}
+	file.Close()
+	return err
 }
 
 type ParseResponse struct {
@@ -237,6 +335,10 @@ func findPagesInCategory(category string, titles chan<- string) {
 		}
 		for _, cm := range data.Query.Categorymembers {
 			if skipMultiWordDefinitions && strings.Contains(cm.Title, " ") {
+				continue
+			}
+			// EXPERIMENT: dont use articles with hyphen in them
+			if strings.Contains(cm.Title, "-") {
 				continue
 			}
 			if strings.HasPrefix(cm.Title, "Category:") {
