@@ -17,9 +17,19 @@ This is a Go program to fetch Wiktionary page content from their API, (optionall
 
 3. Download `kindlegen` for your platform https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765211[from here].
 
-4. ???
+4. Edit the metadata in `dict.opf`. Don't forget to modify **`<DictionaryInLanguage>`**! Set it to the https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes[ISO 639-1 code from here].
+`cover.png` doesn't matter much as it won't show up as a book by default.
 
-5. `go run kindling.go -file words.gob -freqlist <(head -n 50000 fi.txt) && kindlegen dict.opf -verbose -c2 -o enfi.mobi`
+5. On Linux/MacOS, run 
+
+[source, sh]
+----
+go run kindling.go -freqlist <(head -n 50000 fi.txt)
+kindlegen dict.opf -verbose -c2 -o enfi.mobi
+----
+
+On Windows you'll have to trim down your frequency wordlist somehow else, idk.
+
 
 == Q&A
 
