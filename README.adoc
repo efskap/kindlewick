@@ -1,4 +1,4 @@
-= Wiktionary to Kindle
+= Kindlewick
 
 ++++
 <img src="screenshot.png" alt="Screenshot" align="right" width="40%" >
