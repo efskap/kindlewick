@@ -11,24 +11,43 @@ This is a Go program to fetch Wiktionary page content from their API, (optionall
 == Instructions
 
 
-1. Install Go. Probably 1.12.
+. Download the necessities
 
-2. Download a frequency wordlist for your language https://invokeit.wordpress.com/frequency-word-lists/[from here] if possible. Otherwise the file might be too big for `kindlegen` to handle.
+.. Install https://golang.org/dl/[Go]. Probably 1.12.
 
-3. Download `kindlegen` for your platform https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765211[from here].
+.. Download a frequency wordlist for your language https://invokeit.wordpress.com/frequency-word-lists/[from here] if possible. 
++
+Otherwise the file might be too big for `kindlegen` to handle, as it's a 32-bit program. Finnish, with its 98184 lemmata, proved too big to process without a freq list, but your obscure language might be fine. +
+If you can't find one, just omit the `-freqlist` flag below.
 
-4. Edit the metadata in `dict.opf`. Don't forget to modify **`<DictionaryInLanguage>`**! Set it to the https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes[ISO 639-1 code from here].
-`cover.png` doesn't matter much as it won't show up as a book by default.
+.. Download https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765211[`kindlegen`] for your platform You'll use this to convert the .opf + .html files into .mobi.
 
-5. On Linux/MacOS, run 
+. Edit the metadata in `dict.opf`. +
+.. Don't forget to modify **`<DictionaryInLanguage>`**! +
+Set it to the https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes[ISO 639-1 code from here].
+.. You can replace `cover.png` too, but it matter much as the dictionary won't show up as a book by default.
 
+. To generate `dict.html`, which `dict.opf` references, run this, with the name of the frequency list you downloaded instead of `fi.txt`:
++
 [source, sh]
 ----
-go run kindling.go -freqlist <(head -n 50000 fi.txt)
-kindlegen dict.opf -verbose -c2 -o enfi.mobi
+go run kindlewick.go -freqlist fi.txt
+----
++
+If it's still too big, you can just take the first 50k lines or whatever from the file (in bash/zsh/etc) like so:
++
+[source, sh]
+----
+go run kindlewick.go -freqlist <(head -n 50000 fi.txt)
 ----
 
-On Windows you'll have to trim down your frequency wordlist somehow else, idk.
+. Finally, generate the .mobi file and put it on your Kindle! 
++
+[source, sh]
+----
+kindlegen dict.opf -verbose -c2 -o my_dict.mobi
+----
+
 
 
 == Q&A
@@ -39,6 +58,6 @@ How are inflections acquired?::
 Basically it just takes every span inside a table cell, and if it consists of multiple words, takes the last one (`olen odottanut` -> `odottanut`, since you can only look up a single word at a time on Kindle), and filters out duplicates.
 
 Why not consult the frequency list _before_ downloading every single page?::
-Because frequency lists usually have inflected forms of words, and if you only see `olen` in the list you won't know you have to download the lemma form `olla`. Ergo, download everything and check the headword and all inflections against the list.
+Because frequency lists usually have inflected forms of words, and if you only see `olen` in the list you won't know you have to download the lemma form `olla`. Ergo, download everything and keep entries where at least _some_ form of the word shows up in the frequency list.
 
 --
