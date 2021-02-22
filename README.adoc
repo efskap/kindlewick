@@ -1,3 +1,5 @@
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fefskap%2Fkindlewick.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fefskap%2Fkindlewick?ref=badge_shield)
+
 = Kindlewick
 
 ++++
@@ -61,3 +63,7 @@ Why not consult the frequency list _before_ downloading every single page?::
 Because frequency lists usually have inflected forms of words, and if you only see `olen` in the list you won't know you have to download the lemma form `olla`. Ergo, download everything and keep entries where at least _some_ form of the word shows up in the frequency list.
 
 --
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fefskap%2Fkindlewick.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fefskap%2Fkindlewick?ref=badge_large)
